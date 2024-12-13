@@ -1,0 +1,75 @@
+{% include "base.html" %} 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Employee</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Create Employee</h1>
+        <form id="employee-form">
+            {% load custom_filters %}
+            {% csrf_token %}
+            {% for field in form.dynamic_fields %}
+                <div class="form-group">
+                    <label for="{{ field.label }}">{{ field.label }}</label>
+                    {% if field.input_type == "text" %}
+                        <input type="text" class="form-control" name="{{ field.label }}" value="{{ dynamic_data|get_item:field.label }}" {% if field.required %}required{% endif %}>
+                    {% elif field.input_type == "number" %}
+                        <input type="number" class="form-control" name="{{ field.label }}" value="{{ dynamic_data|get_item:field.label }}" {% if field.required %}required{% endif %}>
+                    {% elif field.input_type == "date" %}
+                        <input type="date" class="form-control" name="{{ field.label }}" value="{{ dynamic_data|get_item:field.label }}" {% if field.required %}required{% endif %}>
+                    {% elif field.input_type == "checkbox" %}
+                        <input type="checkbox" class="form-check-input" name="{{ field.label }}" {% if dynamic_data|get_item:field.label %}checked{% endif %}>
+                    {% elif field.input_type == "textarea" %}
+                        <textarea class="form-control" name="{{ field.label }}" {% if field.required %}required{% endif %}>{{ dynamic_data|get_item:field.label }}</textarea>
+                    {% elif field.input_type == "select" %}
+                        <select class="form-control" name="{{ field.label }}">
+                            {% for option in field.options %}
+                                <option value="{{ option }}" {% if dynamic_data|get_item:field.label == option %}selected{% endif %}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>        
+    </div>
+
+    <script>
+        document.getElementById('employee-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = {};
+            new FormData(event.target).forEach((value, key) => {
+                formData[key] = value;
+            });
+            fetch('/employee/employee_create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ data: formData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else if (data.errors) {
+                    alert('Errors:\n' + data.errors.join('\n'));
+                } else {
+                    alert('An unexpected error occurred.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to submit the form. Please try again.');
+            });
+        });
+    </script>
+</body>
+</html>

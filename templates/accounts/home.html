@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="text-center">
+    <h1>Welcome to Veuz's EMS</h1>
+    {% if user.is_authenticated %}
+        <p>Hello, {{ user.username }}!</p>
+    {% else %}
+        <p>
+            <a href="{% url 'login' %}" class="btn btn-primary">Login</a>
+            <a href="{% url 'register' %}" class="btn btn-secondary">Register</a>
+        </p>
+    {% endif %}
+    <a href="{% url 'form_create' %}" class="btn btn-success m-2">
+        Manage Form
+    </a>
+    <a href="{% url 'employee_create' %}" class="btn btn-success m-2">
+        Create Employees
+    </a>
+    <a href="{% url 'employee_list' %}" class="btn btn-success m-2">
+        Manage Employees
+    </a>
+    
+    </div>
+{% endblock %}

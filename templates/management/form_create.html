@@ -1,0 +1,200 @@
+{% include "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if form %}Edit Dynamic Form{% else %}Create Dynamic Form{% endif %}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-2">
+        <h1>Create Form</h1>
+
+        <div id="form-fields" class="mt-4">
+            {% if form and saved_fields %}
+                <form method="POST">
+                    {% csrf_token %}
+                    {% for field in saved_fields %}
+                        <div class="form-group" id="field_{{ field.id }}">
+                            <label for="{{ field.label }}">{{ field.label }}</label>
+                            {% if field.input_type == 'text' %}
+                                <input type="text" class="form-control" name="{{ field.label }}" value="{{ field.default_value|default:'' }}">
+                            {% elif field.input_type == 'number' %}
+                                <input type="number" class="form-control" name="{{ field.label }}" value="{{ field.default_value|default:'' }}">
+                            {% elif field.input_type == 'date' %}
+                                <input type="date" class="form-control" name="{{ field.label }}" value="{{ field.default_value|default:'' }}">
+                            {% elif field.input_type == 'password' %}
+                                <input type="password" class="form-control" name="{{ field.label }}">
+                            {% elif field.input_type == 'email' %}
+                                <input type="email" class="form-control" name="{{ field.label }}" value="{{ field.default_value|default:'' }}">
+                            {% elif field.input_type == 'checkbox' %}
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="{{ field.label }}" {% if field.default_value %}checked{% endif %}>
+                                    <label class="form-check-label" for="{{ field.label }}">{{ field.label }}</label>
+                                </div>
+                            {% elif field.input_type == 'radio' %}
+                                {% for option in field.options %}
+                                    <div class="form-check">
+                                        <input type="radio" class="form-check-input" name="{{ field.label }}" value="{{ option }}" {% if option == field.default_value %}checked{% endif %}>
+                                        <label class="form-check-label" for="{{ field.label }}_{{ option }}">{{ option }}</label>
+                                    </div>
+                                {% endfor %}
+                            {% elif field.input_type == 'textarea' %}
+                                <textarea class="form-control" name="{{ field.label }}">{{ field.default_value|default:'' }}</textarea>
+                            {% elif field.input_type == 'select' %}
+                                <select class="form-control" name="{{ field.label }}">
+                                    {% for option in field.options %}
+                                        <option value="{{ option }}" {% if option == field.default_value %}selected{% endif %}>{{ option }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            {% else %}
+                <div class="form-group">
+                    <input type="text" placeholder="Label" class="form-control label">
+                    <select class="form-control input-type mt-2">
+                        <option value="text">Text</option>
+                        <option value="number">Number</option>
+                        <option value="date">Date</option>
+                        <option value="password">Password</option>
+                        <option value="email">Email</option>
+                        <option value="textarea">Textarea</option>
+                    </select>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4">
+            <button id="add-field" class="btn btn-secondary">Add Field</button>
+            <button id="save-form" class="btn btn-success">Save Form</button>
+        </div>
+
+        <form method="post" action="{% url "update_field_order" %}">
+            {% csrf_token %}
+            <div id="dynamic-field-display" class="mt-4">
+                <h4>Created Fields</h4>
+                <div id="sortable-fields">
+                    {% for fields in data.dynamic_fields %}
+                        <div class="alert alert-info" id="field_{{ fields.id }}" data-label="{{ fields.label }}" data-input-type="{{ fields.input_type }}">
+                            <span>{{ fields.label }}</span> <br>
+                            <span>{{ fields.input_type }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="field_data" id="field-data">
+                <button id="save-button" class="btn btn-primary mt-3" style="display: none;">Save Order</button>
+            </div>
+        </form>
+        
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.7/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        function getCSRFToken() {
+            const cookie = document.cookie.split(';').find(cookie => cookie.trim().startsWith('csrftoken=')) 
+            return cookie ? cookie.split('=')[1] : ''
+        }
+
+        document.getElementById('add-field').addEventListener('click', function() {
+            const container = document.createElement('div');
+            container.classList.add('form-group');
+            container.innerHTML = `
+                <div class="field-container">
+                    <input type="text" placeholder="Label" class="form-control label">
+                    <select class="form-control input-type mt-2">
+                        <option value="text">Text</option>
+                        <option value="number">Number</option>
+                        <option value="date">Date</option>
+                        <option value="password">Password</option>
+                        <option value="email">Email</option>
+                        <option value="textarea">Textarea</option>
+                    </select>
+                    <button type="button" class="btn btn-danger btn-sm mt-2 remove-field">Remove</button>
+                </div>
+            `;
+
+            document.getElementById('form-fields').appendChild(container);
+
+            container.querySelector('.remove-field').addEventListener('click', function() {
+                container.remove();
+            });
+        });
+        const sortable = new Sortable(document.getElementById('sortable-fields'), {
+            animation: 150, 
+            ghostClass: 'sortable-ghost',
+            onEnd(evt) {
+                document.getElementById('save-button').style.display = 'block';
+            }
+        });
+        
+        function prepareFieldData() {
+            const fieldData = [];
+            const fields = document.querySelectorAll('#sortable-fields .alert-info');
+            fields.forEach((field, index) => {
+                fieldData.push({
+                    id: field.id.replace('field_', ''),
+                    order: index,
+                    label: field.getAttribute('data-label'),
+                    input_type: field.getAttribute('data-input-type')
+                });
+            });
+            return fieldData;
+        }
+        
+        document.getElementById('save-button').addEventListener('click', (event) => {
+            const fieldData = prepareFieldData();
+            document.getElementById('field-data').value = JSON.stringify(fieldData);
+        });
+        
+
+        document.getElementById('save-form').addEventListener('click', function() {
+            
+            const csrfToken = getCSRFToken();
+            console.log("lll")
+            
+            const fields = [];
+            document.querySelectorAll('#form-fields > div').forEach(div => {
+                const label = div.querySelector('.label')?.value || div.querySelector('label')?.innerText;
+                const inputType = div.querySelector('.input-type')?.value;
+                const defaultValue = div.querySelector('input, textarea, select')?.value;
+
+                if (label && inputType) {
+                    fields.push({
+                        label,
+                        input_type: inputType
+                    });
+                }
+            });
+            fetch(`/employee/form_create/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ fields })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Form saved!');
+                    window.location.href = window.location.href;
+                } else {
+                    alert('Error saving form.');
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
