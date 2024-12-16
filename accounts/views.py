@@ -67,7 +67,6 @@ def profile(request):
 @login_required
 def change_password(request):
     if request.method == 'POST':
-        print(request.POST)
         form = PasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
             form.save()

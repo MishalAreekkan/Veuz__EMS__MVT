@@ -78,7 +78,9 @@ def employee_list(request):
 
     if employees:
         dynamic_data = json.loads(employees[0].get('dynamic_data', '{}'))
+        dynamic_data.pop('csrfmiddlewaretoken')
         dynamic_headers = list(dynamic_data.keys())
+        print(dynamic_data,'dedddddd')
 
     search_field = request.GET.get('searchField', '')
     search_value = request.GET.get('searchValue', '')
